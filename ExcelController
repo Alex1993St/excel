@@ -1,11 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: programist_1
- * Date: 12.08.2019
- * Time: 11:13
- */
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -79,11 +72,7 @@ class ExcelController extends Controller
         $objWorkSheet->setTitle($user_name);
 
 
-        $objWorkSheet->setCellValue('A1', 'Days')
-            ->setCellValue('B1', 'Late')
-            ->setCellValue('C1', 'Missing')
-            ->setCellValue('D1', 'Print')
-            ->setCellValue('E1', 'Deviation');
+        $this->createRow('1', 'Days', 'Late', 'Missing', 'Print', 'Deviation', '', $objWorkSheet);
 
         foreach($date as $days => $user){
             if(sizeof($user['times']) >= 2){
@@ -111,29 +100,17 @@ class ExcelController extends Controller
                     $total_time += $late_time - strtotime($different);
                 }
 
-                $objWorkSheet->setCellValue('A' . $i, $days)
-                              ->setCellValue('B' . $i, $late)
-                              ->setCellValue('C' . $i, '')
-                              ->setCellValue('D' . $i, '')
-                              ->setCellValue('E' . $i, $different);
+                $this->createRow($i, $days, $late, '', '', $different, '', $objWorkSheet);
+                
             }else{
                 $total_print++;
 
-                $objWorkSheet->setCellValue('A' . $i, $days)
-                    ->setCellValue('B' . $i, '')
-                    ->setCellValue('C' . $i, '')
-                    ->setCellValue('D' . $i, 'Miss fingerprint')
-                    ->setCellValue('E' . $i, '');
+                $this->createRow($i, $days, '', '', 'Miss fingerprint', '', '', $objWorkSheet);
             }
              $i++;
         };
 
-
-        $objWorkSheet->setCellValue('A' . $i,  'Total')
-            ->setCellValue('B' . $i, $total_late)
-            ->setCellValue('C' . $i, '')
-            ->setCellValue('D' . $i, $total_print)
-            ->setCellValue('E' . $i, date('H:i:s', $total_time));
+        $this->createRow($i, 'Total', $total_late, '', $total_print, date('H:i:s', $total_time), '', $objWorkSheet);
 
         $this->excel_table[] = [
             'name' => $user_name,
@@ -150,27 +127,29 @@ class ExcelController extends Controller
         $objWorkSheet = $objPHPExcel->getSheet(0);
         $objWorkSheet->setTitle('Totle');
 
-        $objWorkSheet->setCellValue('A1', 'Name')
-            ->setCellValue('B1', 'Late')
-            ->setCellValue('C1', 'Missing')
-            ->setCellValue('D1', 'Print')
-            ->setCellValue('E1', 'Deviation')
-            ->setCellValue('F1', 'Link');
+        $this->createRow('1', 'Name', 'Late', 'Missing', 'Print', 'Deviation', 'Link', $objWorkSheet);
 
         $i = 2;
         foreach($this->excel_table as $info){
-            $objWorkSheet->setCellValue('A' . $i, $info['name'])
-                ->setCellValue('B' . $i, $info['late'])
-                ->setCellValue('C' . $i, $info['absent'])
-                ->setCellValue('D' . $i, $info['fingerprint_miss'])
-                ->setCellValue('E' . $i, $info['time_late'])
-                ->setCellValue('F' . $i, $info['name']);
+
+            $this->createRow($i, $info['name'], $info['late'], $info['absent'], $info['fingerprint_miss'], $info['time_late'], $info['name'], $objWorkSheet);
+
 
             $objPHPExcel->getActiveSheet()->getCell('F' . $i)
                 ->getHyperlink()
                 ->setUrl("sheet://'".$info['name']."'!A1");
             $i++;
         }
+    }
+
+    public function createRow($number, $days, $late, $missing, $print, $deviation, $link, $objWorkSheet)
+    {
+        $objWorkSheet->setCellValue('A' . $number, $days)
+                    ->setCellValue('B' . $number, $late)
+                    ->setCellValue('C' . $number, $missing)
+                    ->setCellValue('D' . $number, $print)
+                    ->setCellValue('E' . $number, $deviation)
+                    ->setCellValue('F' . $number, $link);
     }
 
     public function download()
