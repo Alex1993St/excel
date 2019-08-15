@@ -55,6 +55,8 @@ class ExcelController extends Controller
             }
         }
 
+        $objPHPExcel->setActiveSheetIndex(0);
+
         $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel5');
         $objWriter->save($this->file_name);
         unlink($this->tmpfname);
@@ -80,11 +82,8 @@ class ExcelController extends Controller
         $i = 2;
 
 
-        foreach(range('A','G') as $columnID)
-        {
-            $objPHPExcel->getActiveSheet()->getColumnDimension($columnID)->setAutoSize(true);
-        }
 
+        $objPHPExcel->getActiveSheet();
         $objWorkSheet = $objPHPExcel->createSheet();
         $objWorkSheet->setTitle($user_name);
 
@@ -172,7 +171,7 @@ class ExcelController extends Controller
     {
         $objPHPExcel->getActiveSheet();
         $objWorkSheet = $objPHPExcel->getSheet(0);
-        $objWorkSheet->setTitle('Totle');
+        $objWorkSheet->setTitle('Total');
 
         $this->createRow('1', 'Name', 'Late', 'Missing', 'Print', 'Deviation', 'Link', $objWorkSheet);
 
@@ -181,7 +180,8 @@ class ExcelController extends Controller
 
             $this->createRow($i, $info['name'], $info['late'], $info['absent'], $info['fingerprint_miss'], $info['time_late'], $info['name'], $objWorkSheet);
 
-            $objPHPExcel->getActiveSheet()->getCell('F' . $i)
+            $objPHPExcel->getActiveSheet()
+                        ->getCell('F' . $i)
                         ->getHyperlink()
                         ->setUrl("sheet://'".$info['name']."'!A1");
             $i++;
