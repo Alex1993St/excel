@@ -1,12 +1,10 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use PHPExcel;
 use PHPExcel_IOFactory;
-use PHPExcel_Writer_Excel2007;
-
-use App\XLSXWriter;
 
 class ExcelController extends Controller
 {
@@ -62,6 +60,7 @@ class ExcelController extends Controller
         $total_time = 0;
         $total_late = 0;
         $total_print = 0;
+        $total_miss_day = 0;
 
         $late_time = strtotime('09:00:00');
 
@@ -74,48 +73,78 @@ class ExcelController extends Controller
 
         $this->createRow('1', 'Days', 'Late', 'Missing', 'Print', 'Deviation', '', $objWorkSheet);
 
-        foreach($date as $days => $user){
-            if(sizeof($user['times']) >= 2){
-                $start = array_shift($user['times']);
-                $end = array_pop($user['times']);
-                $different = date('H:i:s',  strtotime($end) -  strtotime($start));
 
-                if($start > '09:10' && $start < '09:50'){
-                    $late = 'Late to 9 o\'clock';
-                    $total_late++;
-                }else if($start > '10:10' && $start < '10:50'){
-                    $late = 'Late to 10 o\'clock';
-                    $total_late++;
-                }else if($start < '09:10'){
-                    $late = 'In time';
-                }else if($start > '10:51'){
-                    $late = 'Late after 10:51';
-                    $total_late++;
+        $get_time = strtotime('previous month');
+        $month =  date('m', $get_time);
+        $start_month = date('Y-m', $get_time). '-01';
+        $myTime = strtotime($start_month);  // Use whatever date format you want
+        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, date('Y'));
+
+
+        while($daysInMonth > 0)
+        {
+            $day = date("D", $myTime);
+            $checked_work_day = date('Y-m-d', $myTime);
+
+            if($day != "Sun" && $day != "Sat"){
+
+                if(array_key_exists($checked_work_day, $date)){
+                    $user = $date[$checked_work_day];
+                    if(sizeof($user['times']) >= 2){
+                        $start = array_shift($user['times']);
+                        $end = array_pop($user['times']);
+                        $different = date('H:i:s',  strtotime($end) -  strtotime($start));
+
+                        if($start > '09:10' && $start < '09:50'){
+                            $late = 'Late to 9 o\'clock';
+                            $total_late++;
+                        }else if($start > '10:10' && $start < '10:50'){
+                            $late = 'Late to 10 o\'clock';
+                            $total_late++;
+                        }else if($start < '09:10'){
+                            $late = 'In time';
+                        }else if($start > '10:51'){
+                            $late = 'Late after 10:51';
+                            $total_late++;
+                        }else{
+                            $late = 'In time';
+                        }
+
+                        if($different < '09:00:00'){
+
+                            $total_time += $late_time - strtotime($different);
+                        }
+
+                        $this->createRow($i, $checked_work_day, $late, '', '', $different, '', $objWorkSheet);
+
+                    }else{
+                        $total_print++;
+
+                        $this->createRow($i, $checked_work_day, '', '', 'Miss fingerprint', '', '', $objWorkSheet);
+
+                    }
                 }else{
-                    $late = 'In time';
+                    $total_miss_day++;
+                    $this->createRow($i, $checked_work_day, '', $total_miss_day, 'Miss day', '', '', $objWorkSheet);
                 }
 
-                if($different < '09:00:00'){
-
-                    $total_time += $late_time - strtotime($different);
-                }
-
-                $this->createRow($i, $days, $late, '', '', $different, '', $objWorkSheet);
-                
             }else{
-                $total_print++;
-
-                $this->createRow($i, $days, '', '', 'Miss fingerprint', '', '', $objWorkSheet);
+                $this->createRow($i, $checked_work_day, '', '', 'holiday', '', '', $objWorkSheet);
             }
-             $i++;
-        };
 
-        $this->createRow($i, 'Total', $total_late, '', $total_print, date('H:i:s', $total_time), '', $objWorkSheet);
+            $i++;
+            $daysInMonth--;
+            $myTime += 86400;
+        }
+
+
+        $this->createRow($i, 'Total', $total_late, $total_miss_day, $total_print, date('H:i:s', $total_time), '', $objWorkSheet);
+
 
         $this->excel_table[] = [
             'name' => $user_name,
             'late' => $total_late,
-            'absent' => '',
+            'absent' => $total_miss_day,
             'fingerprint_miss' => $total_print,
             'time_late' => date('H:i:s', $total_time), ''
         ];
@@ -133,7 +162,6 @@ class ExcelController extends Controller
         foreach($this->excel_table as $info){
 
             $this->createRow($i, $info['name'], $info['late'], $info['absent'], $info['fingerprint_miss'], $info['time_late'], $info['name'], $objWorkSheet);
-
 
             $objPHPExcel->getActiveSheet()->getCell('F' . $i)
                 ->getHyperlink()
