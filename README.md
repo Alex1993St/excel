@@ -1,1 +1,11 @@
-# excel
+     $filename = 'excel.xlsx';
+        $inputFileType = IOFactory::identify($filename);
+        $reader = IOFactory::createReader($inputFileType);
+        $fileReads = $reader->load($filename);
+        $lastRow = $fileReads->getActiveSheet()->getHighestRow();
+        $nextRow = ++$lastRow;
+        $fileReads->getActiveSheet()->setCellValue("A$nextRow", $request['city']);
+        $fileReads->getActiveSheet()->setCellValue("B$nextRow", $request['time']);
+        $fileReads->getActiveSheet()->setCellValue("C$nextRow", $request['type']);
+        $writer = new Xlsx($fileReads);
+        $writer->save($filename);
